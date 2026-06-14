@@ -1,13 +1,14 @@
 {
   "expo": {
-    "name": "test",
-    "slug": "test",
+    "name": "Hello",
+    "slug": "hello",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "ai.nqb.hello"
     },
     "android": {
       "adaptiveIcon": {

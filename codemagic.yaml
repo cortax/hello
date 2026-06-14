@@ -1,0 +1,50 @@
+workflows:
+  ios-appstore:
+    name: Hello – iOS App Store
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      # ⚠️ Remplace par le NOM exact de ton intégration App Store Connect
+      # (Codemagic → Team settings → Integrations → App Store Connect)
+      app_store_connect: App Store Connect API Key
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: ai.nqb.hello
+      vars:
+        XCODE_WORKSPACE: "ios/Hello.xcworkspace"
+        XCODE_SCHEME: "Hello"
+        BUNDLE_ID: "ai.nqb.hello"
+      node: 20.20.2
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Installer les dépendances npm
+        script: npm ci
+      - name: Générer le projet iOS natif (expo prebuild)
+        script: npx expo prebuild --platform ios --no-install
+      - name: Installer les CocoaPods
+        script: |
+          cd ios
+          pod install
+      - name: Appliquer les profils de signature
+        script: xcode-project use-profiles
+      - name: Définir le numéro de build
+        script: |
+          cd ios
+          agvtool new-version -all "$BUILD_NUMBER"
+      - name: Compiler l'IPA
+        script: |
+          xcode-project build-ipa \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        # Envoie le build sur TestFlight automatiquement.
+        submit_to_testflight: true
+        # Pour pousser directement en revue App Store, décommente :
+        # submit_to_app_store: false
