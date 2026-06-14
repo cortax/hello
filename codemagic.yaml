@@ -36,14 +36,11 @@ workflows:
     name: Hello – iOS App Store
     max_build_duration: 60
     instance_type: mac_mini_m2
-    integrations:
-      # ⚠️ Remplace par le NOM exact de ton intégration App Store Connect
-      # (Codemagic → Team settings → Integrations → App Store Connect)
-      app_store_connect: App Store Connect API Key
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: ai.nqb.hello
+      groups:
+        # Variables sécurisées créées via l'API Codemagic :
+        # APP_STORE_CONNECT_PRIVATE_KEY / _KEY_IDENTIFIER / _ISSUER_ID
+        - appstore
       vars:
         XCODE_WORKSPACE: "ios/Hello.xcworkspace"
         XCODE_SCHEME: "Hello"
@@ -60,13 +57,19 @@ workflows:
         script: |
           cd ios
           pod install
-      - name: Appliquer les profils de signature
-        script: xcode-project use-profiles
+      - name: Récupérer certificat + profil (App Store Connect API)
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
       - name: Définir le numéro de build
         script: |
           cd ios
           agvtool new-version -all "$BUILD_NUMBER"
-      - name: Compiler l'IPA
+      - name: Compiler l'IPA (signée)
         script: |
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
@@ -76,8 +79,10 @@ workflows:
       - /tmp/xcodebuild_logs/*.log
     publishing:
       app_store_connect:
-        auth: integration
-        # Envoie le build sur TestFlight automatiquement.
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        # Envoie automatiquement le build sur TestFlight.
         submit_to_testflight: true
-        # Pour pousser directement en revue App Store, décommente :
+        # Pour soumettre directement à la revue App Store, décommente :
         # submit_to_app_store: false
